@@ -101,6 +101,7 @@ client.on("interactionCreate",async i=>{
     topic:`raid-order:${i.user.id}`,
     permissionOverwrites:[
      {id:g.roles.everyone.id,deny:[PermissionsBitField.Flags.ViewChannel]},
+     {id:client.user.id,allow:[PermissionsBitField.Flags.ViewChannel,PermissionsBitField.Flags.SendMessages,PermissionsBitField.Flags.ReadMessageHistory,PermissionsBitField.Flags.EmbedLinks,PermissionsBitField.Flags.ManageChannels]},
      {id:i.user.id,allow:[PermissionsBitField.Flags.ViewChannel,PermissionsBitField.Flags.SendMessages,PermissionsBitField.Flags.ReadMessageHistory,PermissionsBitField.Flags.AttachFiles]}
     ]
    });
