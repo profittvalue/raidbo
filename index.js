@@ -20,11 +20,19 @@ const PRODUCTS = [
   {id:"wrap_logo",label:"Car Wrap: Logo Made By Me — $1",category:"Car Wraps",price:"$1"}
 ];
 const PAYMENTS=["Cash App","PayPal","Zelle"];
+const COMMANDS=[
+ {name:"shop",description:"Open the Raid Bot shop"},
+ {name:"setup-shop",description:"Post the permanent Raid Bot shop panel"}
+];
 
 function shopEmbed(){return new EmbedBuilder().setTitle("🛒 RAID BOT SHOP").setDescription("Welcome to the Raid Bot Shop!\n\nSelect a product below to view the price and begin your order. After choosing your product, select a payment method and create your purchase ticket.").setFooter({text:"Raid Bot • Purchase System"});}
 function productMenu(){return new ActionRowBuilder().addComponents(new StringSelectMenuBuilder().setCustomId("raid_product").setPlaceholder("Select a product").addOptions(PRODUCTS.map(p=>new StringSelectMenuOptionBuilder().setLabel(p.label).setValue(p.id).setDescription(p.category+" • "+p.price))));}
 
-client.once("ready",()=>console.log(`Raid Bot online as ${client.user.tag}`));
+client.once("ready",async()=>{
+  try{ await client.application.commands.set(COMMANDS); console.log("Slash commands registered."); }
+  catch(e){ console.error("Slash command registration failed:",e); }
+  console.log(`Raid Bot online as ${client.user.tag}`);
+});
 
 client.on("interactionCreate",async i=>{
  try{
