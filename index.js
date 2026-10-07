@@ -77,30 +77,49 @@ client.on("interactionCreate",async i=>{
    const [,pid,pay]=i.customId.split(":");
    const p=PRODUCTS.find(x=>x.id===pid);
    if(!p)return i.reply({content:"❌ Product not found.",ephemeral:true});
+
    const g=i.guild;
    const owner=await g.fetchOwner();
+   const mainStaff=g.roles.cache.find(r=>r.name.toLowerCase()==="main staff");
    const existing=g.channels.cache.find(c=>c.type===ChannelType.GuildText&&c.topic===`raid-order:${i.user.id}`);
    if(existing)return i.reply({content:`❌ You already have an open ticket: ${existing}`,ephemeral:true});
 
    const safe=(i.user.username.toLowerCase().replace(/[^a-z0-9-]/g,"").slice(0,18)||"customer");
    const t=await g.channels.create({
-    name:`order-${safe}`,type:ChannelType.GuildText,topic:`raid-order:${i.user.id}`,
+    name:`order-${safe}`,
+    type:ChannelType.GuildText,
+    topic:`raid-order:${i.user.id}`,
     permissionOverwrites:[
      {id:g.roles.everyone.id,deny:[PermissionsBitField.Flags.ViewChannel]},
      {id:i.user.id,allow:[PermissionsBitField.Flags.ViewChannel,PermissionsBitField.Flags.SendMessages,PermissionsBitField.Flags.ReadMessageHistory,PermissionsBitField.Flags.AttachFiles]}
     ]
    });
 
-   if(process.env.STAFF_ROLE_ID) await t.permissionOverwrites.create(process.env.STAFF_ROLE_ID,{ViewChannel:true,SendMessages:true,ReadMessageHistory:true,AttachFiles:true}).catch(e=>console.error("Staff role permission error:",e));
+   if(mainStaff){
+    await t.permissionOverwrites.create(mainStaff.id,{ViewChannel:true,SendMessages:true,ReadMessageHistory:true,AttachFiles:true})
+     .catch(e=>console.error("Main Staff permission error:",e));
+   }
 
    const ownerPing="<@"+owner.id+">";
-   const staffPing=process.env.STAFF_ROLE_ID ? "<@&"+process.env.STAFF_ROLE_ID+">" : "";
+   const staffPing=mainStaff ? "<@&"+mainStaff.id+">" : "";
+
+   const ticketEmbed=new EmbedBuilder()
+    .setTitle("🎫 RAID BOT PURCHASE")
+    .setDescription(
+      "A new purchase has been created.\n\n"+
+      "**👤 Customer**\n<@"+i.user.id+">\n\n"+
+      "**🛍️ What They're Buying**\n"+p.label+"\n\n"+
+      "**📁 Category**\n"+p.category+"\n\n"+
+      "**💰 Price**\n"+p.price+"\n\n"+
+      "**💳 Paying With**\n"+pay+"\n\n"+
+      "**🟡 Status**\nWaiting for customer details/files.\n\n"+
+      "Please send the required details or files below."
+    )
+    .setFooter({text:"Raid Bot • Purchase Ticket"});
 
    await t.send({
-    content:"🚨 NEW RAID BOT ORDER 🚨\n\n"+ownerPing+" "+staffPing+" <@"+i.user.id+">",
-    embeds:[new EmbedBuilder().setTitle("🎫 NEW PURCHASE TICKET").setDescription(
-     " **Customer:** <@"+i.user.id+">\n\n**🛍️ Buying:** "+p.label+"\n**💰 Price:** "+p.price+"\n**💳 Paying With:** "+pay+"\n**📁 Category:** "+p.category+"\n\n**Order Status:** 🟡 Waiting for customer details\n\nPlease provide the details/files needed to complete this order."
-    ).setFooter({text:"Raid Bot • Purchase Ticket"})]
+    content:"🚨 NEW RAID BOT ORDER 🚨\n"+ownerPing+" "+staffPing+" <@"+i.user.id+">",
+    embeds:[ticketEmbed]
    });
 
    return i.reply({content:"✅ Your purchase ticket is ready: "+t,ephemeral:true});
