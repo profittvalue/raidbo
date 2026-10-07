@@ -26,35 +26,24 @@ const COMMANDS=[
 ];
 
 function shopEmbed(){
- return new EmbedBuilder()
-  .setTitle("🛒 RAID BOT SHOP")
+ return new EmbedBuilder().setTitle("🛒 RAID BOT SHOP")
   .setDescription("Welcome to the Raid Bot Shop!\n\nSelect a category below, then choose a product to begin your order. After choosing your product, select a payment method and create your purchase ticket.")
   .setFooter({text:"Raid Bot • Purchase System"});
 }
-
 function categoryMenu(customId,placeholder,products){
- return new ActionRowBuilder().addComponents(
-  new StringSelectMenuBuilder()
-   .setCustomId(customId)
-   .setPlaceholder(placeholder)
-   .addOptions(products.map(p=>new StringSelectMenuOptionBuilder().setLabel(p.label).setValue(p.id)))
- );
+ return new ActionRowBuilder().addComponents(new StringSelectMenuBuilder().setCustomId(customId).setPlaceholder(placeholder).addOptions(products.map(p=>new StringSelectMenuOptionBuilder().setLabel(p.label).setValue(p.id))));
 }
-
 function shopComponents(){
- const logos=PRODUCTS.filter(p=>p.category==="Logos");
- const merch=PRODUCTS.filter(p=>p.category==="Merch");
- const wraps=PRODUCTS.filter(p=>p.category==="Car Wraps");
  return [
-  categoryMenu("raid_logos","🎨 Select a Logo product",logos),
-  categoryMenu("raid_merch","👕 Select a Merch product",merch),
-  categoryMenu("raid_wraps","🚗 Select a Car Wrap product",wraps)
+  categoryMenu("raid_logos","🎨 Select a Logo product",PRODUCTS.filter(p=>p.category==="Logos")),
+  categoryMenu("raid_merch","👕 Select a Merch product",PRODUCTS.filter(p=>p.category==="Merch")),
+  categoryMenu("raid_wraps","🚗 Select a Car Wrap product",PRODUCTS.filter(p=>p.category==="Car Wraps"))
  ];
 }
 
 client.once("ready",async()=>{
- try{ await client.application.commands.set(COMMANDS); console.log("Slash commands registered."); }
- catch(e){ console.error("Slash command registration failed:",e); }
+ try{await client.application.commands.set(COMMANDS);console.log("Slash commands registered.");}
+ catch(e){console.error("Slash command registration failed:",e);}
  console.log(`Raid Bot online as ${client.user.tag}`);
 });
 
@@ -72,25 +61,16 @@ client.on("interactionCreate",async i=>{
   if(i.isStringSelectMenu() && ["raid_logos","raid_merch","raid_wraps"].includes(i.customId)){
    const p=PRODUCTS.find(x=>x.id===i.values[0]);
    if(!p)return i.reply({content:"❌ Product not found.",ephemeral:true});
-   const menu=new StringSelectMenuBuilder()
-    .setCustomId("raid_payment:"+p.id)
-    .setPlaceholder("Select a payment method")
+   const menu=new StringSelectMenuBuilder().setCustomId("raid_payment:"+p.id).setPlaceholder("Select a payment method")
     .addOptions(PAYMENTS.map(x=>new StringSelectMenuOptionBuilder().setLabel(x).setValue(x.toLowerCase().replace(" ","_"))));
-   return i.reply({
-    embeds:[new EmbedBuilder().setTitle("💳 Choose Payment Method").setDescription(`**Product:** ${p.label}\n**Price:** ${p.price}\n\nChoose how you will pay.`)],
-    components:[new ActionRowBuilder().addComponents(menu)],
-    ephemeral:true
-   });
+   return i.reply({embeds:[new EmbedBuilder().setTitle("💳 Choose Payment Method").setDescription(`**Product:** ${p.label}\n**Price:** ${p.price}\n\nChoose how you will pay.`)],components:[new ActionRowBuilder().addComponents(menu)],ephemeral:true});
   }
 
   if(i.isStringSelectMenu() && i.customId.startsWith("raid_payment:")){
    const p=PRODUCTS.find(x=>x.id===i.customId.split(":")[1]);
    const pay=i.values[0].replace("_"," ");
    if(!p)return i.reply({content:"❌ Product not found.",ephemeral:true});
-   return i.update({
-    embeds:[new EmbedBuilder().setTitle("🧾 Order Summary").setDescription(`**Product:** ${p.label}\n**Category:** ${p.category}\n**Price:** ${p.price}\n**Payment:** ${pay}\n\nClick below to create your purchase ticket.`)],
-    components:[new ActionRowBuilder().addComponents(new ButtonBuilder().setCustomId(`raid_ticket:${p.id}:${pay}`).setLabel("🎫 Create Purchase Ticket").setStyle(ButtonStyle.Success))]
-   });
+   return i.update({embeds:[new EmbedBuilder().setTitle("🧾 Order Summary").setDescription(`**Product:** ${p.label}\n**Category:** ${p.category}\n**Price:** ${p.price}\n**Payment:** ${pay}\n\nClick below to create your purchase ticket.`)],components:[new ActionRowBuilder().addComponents(new ButtonBuilder().setCustomId(`raid_ticket:${p.id}:${pay}`).setLabel("🎫 Create Purchase Ticket").setStyle(ButtonStyle.Success))]});
   }
 
   if(i.isButton() && i.customId.startsWith("raid_ticket:")){
@@ -98,24 +78,32 @@ client.on("interactionCreate",async i=>{
    const p=PRODUCTS.find(x=>x.id===pid);
    if(!p)return i.reply({content:"❌ Product not found.",ephemeral:true});
    const g=i.guild;
+   const owner=await g.fetchOwner();
    const existing=g.channels.cache.find(c=>c.type===ChannelType.GuildText&&c.topic===`raid-order:${i.user.id}`);
    if(existing)return i.reply({content:`❌ You already have an open ticket: ${existing}`,ephemeral:true});
+
    const safe=(i.user.username.toLowerCase().replace(/[^a-z0-9-]/g,"").slice(0,18)||"customer");
    const t=await g.channels.create({
-    name:`order-${safe}`,
-    type:ChannelType.GuildText,
-    topic:`raid-order:${i.user.id}`,
+    name:`order-${safe}`,type:ChannelType.GuildText,topic:`raid-order:${i.user.id}`,
     permissionOverwrites:[
      {id:g.roles.everyone.id,deny:[PermissionsBitField.Flags.ViewChannel]},
      {id:i.user.id,allow:[PermissionsBitField.Flags.ViewChannel,PermissionsBitField.Flags.SendMessages,PermissionsBitField.Flags.ReadMessageHistory,PermissionsBitField.Flags.AttachFiles]}
     ]
    });
-   if(process.env.STAFF_ROLE_ID) await t.permissionOverwrites.create(process.env.STAFF_ROLE_ID,{ViewChannel:true,SendMessages:true,ReadMessageHistory:true,AttachFiles:true}).catch(()=>{});
+
+   if(process.env.STAFF_ROLE_ID) await t.permissionOverwrites.create(process.env.STAFF_ROLE_ID,{ViewChannel:true,SendMessages:true,ReadMessageHistory:true,AttachFiles:true}).catch(e=>console.error("Staff role permission error:",e));
+
+   const ownerPing="<@"+owner.id+">";
+   const staffPing=process.env.STAFF_ROLE_ID ? "<@&"+process.env.STAFF_ROLE_ID+">" : "";
+
    await t.send({
-    content:process.env.STAFF_ROLE_ID?`<@&${process.env.STAFF_ROLE_ID}> <@${i.user.id}>`:`<@${i.user.id}>`,
-    embeds:[new EmbedBuilder().setTitle("🎫 Raid Bot Purchase").setDescription(`Welcome <@${i.user.id}>!\n\n**Product:** ${p.label}\n**Price:** ${p.price}\n**Payment:** ${pay}\n\nPlease provide any details/files the seller needs.`)]
+    content:"🚨 NEW RAID BOT ORDER 🚨\n\n"+ownerPing+" "+staffPing+" <@"+i.user.id+">",
+    embeds:[new EmbedBuilder().setTitle("🎫 NEW PURCHASE TICKET").setDescription(
+     " **Customer:** <@"+i.user.id+">\n\n**🛍️ Buying:** "+p.label+"\n**💰 Price:** "+p.price+"\n**💳 Paying With:** "+pay+"\n**📁 Category:** "+p.category+"\n\n**Order Status:** 🟡 Waiting for customer details\n\nPlease provide the details/files needed to complete this order."
+    ).setFooter({text:"Raid Bot • Purchase Ticket"})]
    });
-   return i.reply({content:`✅ Your ticket is ready: ${t}`,ephemeral:true});
+
+   return i.reply({content:"✅ Your purchase ticket is ready: "+t,ephemeral:true});
   }
  }catch(e){
   console.error(e);
