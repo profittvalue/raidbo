@@ -22,7 +22,8 @@ const PRODUCTS = [
 const PAYMENTS=["Cash App","PayPal","Zelle"];
 const COMMANDS=[
  {name:"shop",description:"Open the Raid Bot shop"},
- {name:"setup-shop",description:"Post the permanent Raid Bot shop panel"}
+ {name:"setup-shop",description:"Post the permanent Raid Bot shop panel"},
+ {name:"close",description:"Close and delete the current ticket"}
 ];
 
 function shopEmbed(){
@@ -55,6 +56,15 @@ client.on("interactionCreate",async i=>{
     if(!i.memberPermissions?.has(PermissionsBitField.Flags.ManageGuild)) return i.reply({content:"❌ You need Manage Server.",ephemeral:true});
     await i.channel.send({embeds:[shopEmbed()],components:shopComponents()});
     return i.reply({content:"✅ Raid Bot shop panel posted.",ephemeral:true});
+   }
+   if(i.commandName==="close"){
+    const isTicket=i.channel?.type===ChannelType.GuildText && typeof i.channel.topic==="string" && i.channel.topic.startsWith("raid-order:");
+    if(!isTicket) return i.reply({content:"❌ This command can only be used inside a Raid Bot purchase ticket.",ephemeral:true});
+    const allowed=i.memberPermissions?.has(PermissionsBitField.Flags.ManageChannels) || i.memberPermissions?.has(PermissionsBitField.Flags.ManageGuild) || i.user.id===i.guild.ownerId;
+    if(!allowed) return i.reply({content:"❌ You need Manage Channels to close tickets.",ephemeral:true});
+    await i.reply({content:"🔒 Ticket closed. Deleting this channel in 3 seconds.",ephemeral:false});
+    setTimeout(()=>i.channel.delete("Raid Bot ticket closed").catch(()=>{}),3000);
+    return;
    }
   }
 
